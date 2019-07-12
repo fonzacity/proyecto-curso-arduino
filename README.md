@@ -1,4 +1,5 @@
 # Página del Proyecto para el curso Gestión de Proyectos con Arduino
+![](https://raw.githubusercontent.com/fonzacity/proyecto-curso-arduino/master/proyecto/montaje.jpg)
 ## Objetivo
 Este pequeño proyecto es una maqueta del control vía WiFi de una pequeña instalación domótica.
 El enfoque es fundamentalmente didáctico, por ejemplo para la aplicación en un Módulo de Instalaciones Domóticas. COn este enfoque puede servir como introducción o profundización a varias áreas:
