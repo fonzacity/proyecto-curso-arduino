@@ -1,16 +1,19 @@
-// Se configura el NODE MCU como servidor 
-// Se usa parte del ejemplo DHTTester de la libreria <DHT.h>
+// Se configura el NODE MCU como servidor y como cliente para su control desde el navegador
 
 // Son necesarias las siguientes librerias:
 // - DHT Sensor Library: https://github.com/adafruit/DHT-sensor-library
 // - Adafruit Unified Sensor Lib: https://github.com/adafruit/Adafruit_Sensor
 
 #include <ESP8266WiFi.h>    // Es el core Arduino para el ESP8266
-#include "DHT.h"
+#include <DHT.h>
 #include "arduino_secrets.h"
+//#include <PubSubClient.h>
 
 #define DHTPIN D2     // Pin digital del ESP8266 conectado al sensor DHT
 #define DHTTYPE DHT11   // Se usa el modelo DHT 11
+
+#define calefaccion D3
+#define luces D4
 
 // Se usa el DHT11 integrado, con tres conexiones:
 // El pin1 se conecta a la alimentacion de 3.3V de la placa NODE MCU
@@ -20,9 +23,13 @@
 // Inicialización del sensor
 DHT dht(DHTPIN, DHTTYPE);
 
-float t;  // Variable que recoge la temperatura
-float h;  // Variable que recoge la humedad
- 
+float t;  // Variable que recoge la temperatura actual
+
+int temp_des = 24;    // Es el valor de temperatura que se desea
+
+String estado_luces = "APAGADAS";  // Indica el estado de las luces
+
+String line, data="";
 // Parámetros de la conexión WiFi
 const char* ssid = SECRET_SSID;
 const char* password = SECRET_PASS ;
@@ -30,7 +37,17 @@ const char* password = SECRET_PASS ;
 // Declaración de servidor en el puerto 80
 WiFiServer server(80);
 
+// Funciones de control de la placa
+void Subir_temperatura(void);
+void Bajar_temperatura(void); 
+void Activar_luces(void); 
+
+
 void setup() {
+
+  pinMode(calefaccion, OUTPUT);   // Configura los pines conectados a actuadores como salidas
+  pinMode(luces, OUTPUT);
+
   Serial.begin(115200);
   
   // Inicia la conexión con la red WiFi
@@ -62,7 +79,28 @@ String preparaHtmlPage()
             "Refresh: 5\r\n" +  // refresh the page automatically every 5 sec
             "\r\n" +
             "<!DOCTYPE HTML>" +
-            "<html>" + "La temperatura es " + t + "ºC y la humedad es del " + h +"%" +    // Envia la información de temperatura y humedad
+            "<html>" +
+            "<head>" +
+            "<title>Control domOtico por WiFi</title>" +  // Texto de la pestaña del navegador
+            "</head>" +
+            "<body>" +
+            "<center>" +
+            "<h1> PROYECTO - SISTEMA DOMOTICO</h1>" +
+            "<h2>La temperatura actual es " + t + "ºC</h2>" +
+            "<h2>La temperatura deseada es " + temp_des + "ºC</h2>" +
+            "<h2>Las luces estan " + estado_luces + "</h2>" +
+            "<br><br>" +
+            "<hr>" +
+
+             /* Botones */
+            "<br><br>" +
+            "<a href=\"/subir\"\"><button>SUBIR TEMPERATURA </button></a><br />" +
+            "<br><br>" +
+            "<a href=\"/bajar\"\"><button>BAJAR TEMPERATURA </button></a><br />" +
+            "<br><br>" +
+            "<a href=\"/activar\"\"><button>ACTIVAR LAS LUCES </button></a><br />" +
+            "</center>" +
+            "</body>" +
             "</html>" +
             "\r\n";
   return htmlPage;
@@ -71,56 +109,57 @@ String preparaHtmlPage()
 /////////////////////////////////////////////////////////////////////////// BUCLE /////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
   
-  // Espera entre medidas
-  delay(2000);
+    // Espera entre medidas
+    delay(2000);
 
-  // Las lecturas del sensor pueden necesitar  hasta 2 segundos (es un sensor muy lento)
-  // Lectura de la humedad en la variable "h"
-  h = dht.readHumidity();             
-  // Lectura de la temperatura en la variable "t"
-  t = dht.readTemperature();
+    // Las lecturas del sensor pueden necesitar  hasta 2 segundos (es un sensor muy lento)
+    // Lectura de la temperatura en la variable "t"
+    t = dht.readTemperature();
 
+    WiFiClient client = server.available();
+    if (!client) return; 
+    data = client.readStringUntil('\r');
+    client.flush();
 
-  // Comprueba si alguna de las lecturas ha fallado y abandona el bucle para volver a intentarlo
-  if (isnan(h) || isnan(t)) {
-   // Serial.println(F("Error al leer el sendor DHT!"));
-    return;
-  }
-
-  /*
-  Serial.print(F("Hay una temperatura de: "));
-  Serial.print(t);
-  Serial.print(F("°C "));
-  Serial.print(F("y una Humedad del: "));
-  Serial.print(h);
-  Serial.println(F("%"));
-  */
-
-   WiFiClient client = server.available();
-  // Espera la conexión del cliente
-  if (client)
-  {
-    Serial.println("\n[Cliente conectado]");
-    while (client.connected())
-    {
-      // Lee linea por linea la petición del cliente
-      if (client.available())
-      {
-        String line = client.readStringUntil('\r');
-        Serial.print(line);
-        // Espera al final de la petición, que está indicada por una línea vacía
-        if (line.length() == 1 && line[0] == '\n')
-        {
-          client.println(preparaHtmlPage());
-          break;
-        }
-      }
-    }
-    delay(1); // Tiempo de espera para que el navegador reciba los datos
-
+    if (data.indexOf("subir") != -1) Subir_temperatura();
+    else if (data.indexOf("bajar") != -1)Bajar_temperatura();
+    else if (data.indexOf("activar") != -1) Activar_luces();
+  
+    client.println(preparaHtmlPage());
+    
     // Cierre de la conexión
     client.stop();
-    Serial.println("[Cliente desconectado]");
+
+    // Ajustar la calefacción
+    if (t<temp_des)
+      digitalWrite(calefaccion, HIGH);
+    else
+      digitalWrite(calefaccion, LOW);
+         
+}
+
+void Subir_temperatura(void)   
+{
+  temp_des = temp_des + 1;
+  Serial.println("SUBIR");
+}
+
+void Bajar_temperatura(void)   
+{
+  temp_des = temp_des - 1;
+  Serial.println("BAJAR");
+}
+
+void Activar_luces(void)   
+{
+  if(estado_luces == "APAGADAS"){
+    estado_luces="ENCENDIDAS";
+    digitalWrite(luces, HIGH);
   }
-  
+  else{
+     estado_luces="APAGADAS";
+     digitalWrite(luces, LOW);
+  }
+  Serial.println(estado_luces);  
+    
 }
