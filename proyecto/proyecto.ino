@@ -8,16 +8,16 @@
 #include <DHT.h>
 #include "arduino_secrets.h"
 
-#define DHTPIN D2     // Pin digital del ESP8266 conectado al sensor DHT11 en circuito integrado 
+#define DHTPIN D4     // Pin digital del ESP8266 conectado al sensor DHT11 en circuito integrado 
 #define DHTTYPE DHT11   // Se usa el modelo DHT 11
 // Se usa el DHT11 integrado, con tres conexiones:
 // El pin1 se conecta a la alimentacion de 3.3V de la placa NODE MCU
 // El pin2 se conecta al pin D2 de la placa NODE MCU
 // El pin3 se conecta a tierra de la placa NODE MCU
 
-#define calefaccion D3
-#define luces D4
-#define alarma  D5
+#define calefaccion D5
+#define luces D6
+#define alarma  D8
 #define pir D1
 
 // Inicialización del sensor
