@@ -14,3 +14,7 @@ La instalación consta de los siguientes sensores y actuadores:
 - Circuito de control del alumbrado: Se simula mediante el encendido y apagado de un LED
 - Alarma de intrusión: Se simula mediante un buzzer activo
 - Calefacción: Se simula mediante el encendido y apagado de un LED
+## Montaje
+![](proyecto/test.jpg)
+## Control de sistema
+![](proyecto/web_control.JPG)
