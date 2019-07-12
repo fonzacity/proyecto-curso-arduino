@@ -1,3 +1,3 @@
 # Página del Proyecto para el curso Gestión de Proyectos con Arduino
 
-![imagen](montaje.jpg)
+![imagen](C:\Users\Marcos\Documents\proyecto-curso-arduino\montaje.jpg)
