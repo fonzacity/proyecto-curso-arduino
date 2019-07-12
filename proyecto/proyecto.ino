@@ -7,18 +7,18 @@
 #include <ESP8266WiFi.h>    // Es el core Arduino para el ESP8266
 #include <DHT.h>
 #include "arduino_secrets.h"
-//#include <PubSubClient.h>
 
-#define DHTPIN D2     // Pin digital del ESP8266 conectado al sensor DHT
+#define DHTPIN D2     // Pin digital del ESP8266 conectado al sensor DHT11 en circuito integrado 
 #define DHTTYPE DHT11   // Se usa el modelo DHT 11
-
-#define calefaccion D3
-#define luces D4
-
 // Se usa el DHT11 integrado, con tres conexiones:
 // El pin1 se conecta a la alimentacion de 3.3V de la placa NODE MCU
 // El pin2 se conecta al pin D2 de la placa NODE MCU
 // El pin3 se conecta a tierra de la placa NODE MCU
+
+#define calefaccion D3
+#define luces D4
+#define alarma  D5
+#define pir D1
 
 // Inicialización del sensor
 DHT dht(DHTPIN, DHTTYPE);
@@ -27,9 +27,13 @@ float t;  // Variable que recoge la temperatura actual
 
 int temp_des = 24;    // Es el valor de temperatura que se desea
 
+int intrusion = LOW; // Variable que detecta el estado de intrusión
+
 String estado_luces = "APAGADAS";  // Indica el estado de las luces
+String estado_alarma = "DESACTIVADA";  // Indica el estado de la alarma
 
 String line, data="";
+
 // Parámetros de la conexión WiFi
 const char* ssid = SECRET_SSID;
 const char* password = SECRET_PASS ;
@@ -41,12 +45,16 @@ WiFiServer server(80);
 void Subir_temperatura(void);
 void Bajar_temperatura(void); 
 void Activar_luces(void); 
+void Activar_alarma(void); 
 
 
 void setup() {
 
   pinMode(calefaccion, OUTPUT);   // Configura los pines conectados a actuadores como salidas
   pinMode(luces, OUTPUT);
+  pinMode(alarma, OUTPUT);
+
+  pinMode(pir, INPUT);            // Configura el detector de presencia como entrada
 
   Serial.begin(115200);
   
@@ -81,7 +89,7 @@ String preparaHtmlPage()
             "<!DOCTYPE HTML>" +
             "<html>" +
             "<head>" +
-            "<title>Control domOtico por WiFi</title>" +  // Texto de la pestaña del navegador
+            "<title>Control domotico por WiFi</title>" +  // Texto de la pestaña del navegador
             "</head>" +
             "<body>" +
             "<center>" +
@@ -89,6 +97,7 @@ String preparaHtmlPage()
             "<h2>La temperatura actual es " + t + "ºC</h2>" +
             "<h2>La temperatura deseada es " + temp_des + "ºC</h2>" +
             "<h2>Las luces estan " + estado_luces + "</h2>" +
+            "<h2>La alarma esta " + estado_alarma + "</h2>" +
             "<br><br>" +
             "<hr>" +
 
@@ -98,7 +107,9 @@ String preparaHtmlPage()
             "<br><br>" +
             "<a href=\"/bajar\"\"><button>BAJAR TEMPERATURA </button></a><br />" +
             "<br><br>" +
-            "<a href=\"/activar\"\"><button>ACTIVAR LAS LUCES </button></a><br />" +
+            "<a href=\"/luces\"\"><button>ACTIVAR/DESACTIVAR LAS LUCES </button></a><br />" +
+            "<br><br>" +
+            "<a href=\"/alarma\"\"><button>ACTIVAR/DESACTIVAR LA ALARMA </button></a><br />" +
             "</center>" +
             "</body>" +
             "</html>" +
@@ -116,6 +127,31 @@ void loop() {
     // Lectura de la temperatura en la variable "t"
     t = dht.readTemperature();
 
+    // Ajustar la calefacción
+    if (t<temp_des)
+      digitalWrite(calefaccion, HIGH);
+    else
+      digitalWrite(calefaccion, LOW);
+
+    // Ajustar la intrusión
+    int valor_pir=digitalRead(pir);
+ 
+    if ((estado_alarma == "ACTIVADA")&&(valor_pir == HIGH))
+      intrusion = HIGH;
+
+    if ((estado_alarma == "DESACTIVADA")&&(intrusion == HIGH))
+      intrusion = LOW;
+
+    Serial.print("El detector PIR detecta ");
+    Serial.print(valor_pir);
+    Serial.print(" y se está produciendo una intrusión");
+    Serial.println(intrusion);
+    
+    if(intrusion == HIGH)
+      digitalWrite(alarma, HIGH);
+    else
+      digitalWrite(alarma, LOW);
+
     WiFiClient client = server.available();
     if (!client) return; 
     data = client.readStringUntil('\r');
@@ -123,31 +159,24 @@ void loop() {
 
     if (data.indexOf("subir") != -1) Subir_temperatura();
     else if (data.indexOf("bajar") != -1)Bajar_temperatura();
-    else if (data.indexOf("activar") != -1) Activar_luces();
-  
+    else if (data.indexOf("luces") != -1) Activar_luces();
+    else if (data.indexOf("alarma") != -1) Activar_alarma();
+
     client.println(preparaHtmlPage());
     
     // Cierre de la conexión
     client.stop();
-
-    // Ajustar la calefacción
-    if (t<temp_des)
-      digitalWrite(calefaccion, HIGH);
-    else
-      digitalWrite(calefaccion, LOW);
-         
+  
 }
 
 void Subir_temperatura(void)   
 {
   temp_des = temp_des + 1;
-  Serial.println("SUBIR");
 }
 
 void Bajar_temperatura(void)   
 {
   temp_des = temp_des - 1;
-  Serial.println("BAJAR");
 }
 
 void Activar_luces(void)   
@@ -159,7 +188,15 @@ void Activar_luces(void)
   else{
      estado_luces="APAGADAS";
      digitalWrite(luces, LOW);
+  } 
+}
+
+void Activar_alarma(void)   
+{
+  if(estado_alarma == "DESACTIVADA"){
+    estado_alarma="ACTIVADA";
   }
-  Serial.println(estado_luces);  
-    
+  else{
+     estado_alarma="DESACTIVADA";
+  }
 }
