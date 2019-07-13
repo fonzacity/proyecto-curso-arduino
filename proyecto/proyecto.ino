@@ -4,7 +4,7 @@
 // - DHT Sensor Library: https://github.com/adafruit/DHT-sensor-library
 // - Adafruit Unified Sensor Lib: https://github.com/adafruit/Adafruit_Sensor
 
-#include <ESP8266WiFi.h>    // Es el core Arduino para el ESP8266
+#include <ESP8266WiFi.h>    // Librería para le gestión de las conexiones WiFi del ESP8266
 #include <DHT.h>
 #include "arduino_secrets.h"
 
