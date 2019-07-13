@@ -141,11 +141,6 @@ void loop() {
 
     if ((estado_alarma == "DESACTIVADA")&&(intrusion == HIGH))
       intrusion = LOW;
-
-    Serial.print("El detector PIR detecta ");
-    Serial.print(valor_pir);
-    Serial.print(" y se está produciendo una intrusión");
-    Serial.println(intrusion);
     
     if(intrusion == HIGH)
       digitalWrite(alarma, HIGH);
